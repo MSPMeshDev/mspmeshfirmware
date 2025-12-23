@@ -23,6 +23,10 @@
 #include "serialization/MeshPacketSerializer.h"
 #endif
 
+#if HAS_PACKET_LOGGER
+#include "PacketLogger.h"
+#endif
+
 #define MAX_RX_FROMRADIO                                                                                                         \
     4 // max number of packets destined to our queue, we dispatch packets quickly so it doesn't need to be big
 
@@ -157,6 +161,11 @@ int32_t Router::runOnce()
  */
 void Router::enqueueReceivedMessage(meshtastic_MeshPacket *p)
 {
+#if HAS_PACKET_LOGGER
+    if (packetLogger)
+        packetLogger->onReceive(p);
+#endif
+
     // Try enqueue until successful
     while (!fromRadioQueue.enqueue(p, 0)) {
         meshtastic_MeshPacket *old_p;
@@ -378,6 +387,11 @@ ErrorCode Router::send(meshtastic_MeshPacket *p)
     if (udpHandler && config.network.enabled_protocols & meshtastic_Config_NetworkConfig_ProtocolFlags_UDP_BROADCAST) {
         udpHandler->onSend(const_cast<meshtastic_MeshPacket *>(p));
     }
+#endif
+
+#if HAS_PACKET_LOGGER
+    if (packetLogger)
+        packetLogger->onSend(p);
 #endif
 
     assert(iface); // This should have been detected already in sendLocal (or we just received a packet from outside)

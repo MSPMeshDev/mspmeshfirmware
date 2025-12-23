@@ -150,6 +150,11 @@ extern void tftSetup(void);
 UdpMulticastHandler *udpHandler = nullptr;
 #endif
 
+#include "mesh/PacketLogger.h"
+#if HAS_PACKET_LOGGER
+PacketLogger *packetLogger = nullptr;
+#endif
+
 #if defined(TCXO_OPTIONAL)
 float tcxoVoltage = SX126X_DIO3_TCXO_VOLTAGE; // if TCXO is optional, put this here so it can be changed further down.
 #endif
@@ -961,6 +966,13 @@ void setup()
     }
 #endif
 #endif
+
+#if HAS_PACKET_LOGGER
+    LOG_DEBUG("Start packet logger");
+    packetLogger = new PacketLogger();
+    packetLogger->start();
+#endif
+
     service = new MeshService();
     service->init();
 

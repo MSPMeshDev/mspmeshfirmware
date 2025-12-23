@@ -62,6 +62,11 @@ extern PCA9557 io;
 extern UdpMulticastHandler *udpHandler;
 #endif
 
+#include "mesh/PacketLogger.h"
+#if HAS_PACKET_LOGGER
+extern PacketLogger *packetLogger;
+#endif
+
 // Global Screen singleton.
 extern graphics::Screen *screen;
 
