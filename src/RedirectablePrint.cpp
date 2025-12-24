@@ -5,6 +5,7 @@
 #include "configuration.h"
 #include "main.h"
 #include "memGet.h"
+#include "mesh/PacketLogger.h"
 #include "mesh/generated/meshtastic/mesh.pb.h"
 #include <assert.h>
 #include <cstring>
@@ -263,6 +264,42 @@ void RedirectablePrint::log_to_ble(const char *logLevel, const char *format, va_
 #endif
 }
 
+void RedirectablePrint::log_to_websocket(const char *logLevel, const char *format, va_list arg)
+{
+#if HAS_PACKET_LOGGER
+    // Prevent recursion - PacketLogger itself uses LOG_* macros
+    static bool inWebSocketLog = false;
+    if (inWebSocketLog || !packetLogger) {
+        return;
+    }
+    inWebSocketLog = true;
+
+    // Format the message
+    char message[256];
+    vsnprintf(message, sizeof(message), format, arg);
+
+    // Remove trailing newline if present
+    size_t len = strlen(message);
+    if (len > 0 && message[len - 1] == '\n') {
+        message[len - 1] = '\0';
+    }
+
+    // Get thread name as source
+    const char *source = "";
+    auto thread = concurrency::OSThread::currentThread;
+    if (thread) {
+        source = thread->ThreadName.c_str();
+    }
+
+    packetLogger->sendLog(getLogLevel(logLevel), source, message);
+    inWebSocketLog = false;
+#else
+    (void)logLevel;
+    (void)format;
+    (void)arg;
+#endif
+}
+
 meshtastic_LogRecord_Level RedirectablePrint::getLogLevel(const char *logLevel)
 {
     meshtastic_LogRecord_Level ll = meshtastic_LogRecord_Level_UNSET; // default to unset
@@ -342,6 +379,7 @@ void RedirectablePrint::log(const char *logLevel, const char *format, ...)
         log_to_serial(logLevel, newFormat, arg);
         log_to_syslog(logLevel, newFormat, arg);
         log_to_ble(logLevel, newFormat, arg);
+        log_to_websocket(logLevel, newFormat, arg);
 
         va_end(arg);
 #ifdef HAS_FREE_RTOS
